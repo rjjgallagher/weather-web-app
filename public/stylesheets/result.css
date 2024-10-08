@@ -1,0 +1,27 @@
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(to right, #00c6ff, #0072ff);
+  color: white;
+  text-align: center;
+  padding: 50px;
+}
+
+.container {
+  min-height: 65vh;
+  min-width: 50vw;
+  background: rgba(200, 255, 255, 0.1);
+  padding: 20px;
+  margin-top: 5rem;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+h1 {
+  font-size: 4.5em;
+  margin-bottom: 4rem;
+}
+
+.weather-info {
+  font-size: 2.2em;
+  line-height: 3.7rem;
+}

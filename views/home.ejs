@@ -1,0 +1,11 @@
+<% layout('layouts/boilerplate')%>
+<div class="container">
+    <h1>Check the Weather</h1>
+    <form action="/weather" method="GET" class="form-inline">
+      <div class="form-group mb-2">
+        <label for="city" class="sr-only">City</label>
+        <input type="text" id="city" name="location" class="form-control" placeholder="Enter city" required>
+      </div>
+      <button type="submit" class="btn btn-primary mb-2">Get Weather</button>
+    </form>
+</div>

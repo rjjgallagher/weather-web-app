@@ -1,0 +1,12 @@
+<% layout('layouts/boilerplate')%>
+<div class="container mt-5">
+    <h2>Weather for <%= location %></h2>
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Location: <%= weatherData.name %></h5>
+        <p class="card-title">Temperature: <%= Math.round(weatherData.main.temp) %>°F</p>
+        <p class="card-title">Condition: <%= weatherData.weather[0].description %></p>
+      </div>
+    </div>
+    <a href="/" class="btn btn-secondary mt-3">Search Again</a>
+</div>
