@@ -1,11 +1,15 @@
 <% layout('layouts/boilerplate')%>
-<div class="container">
-    <h1>Check the Weather</h1>
-    <form action="/weather" method="GET" class="form-inline">
-      <div class="form-group mb-2">
-        <label for="city" class="sr-only">City</label>
-        <input type="text" id="city" name="location" class="form-control" placeholder="Enter city" required>
-      </div>
-      <button type="submit" class="btn btn-primary mb-2">Get Weather</button>
-    </form>
+<!-- Main content with centered search bar -->
+<div class="container d-flex flex-column justify-content-center align-items-center" style="height: 70vh;">
+  <div class="px-3 text-center">
+    <p class="lead" style="user-select: none;"> Welcome to TG-Weather! <br> Jump right in and explore the weather near you. <br>
+        Feel free to create an account and save your favorites!</p>
+  </div>
+  <h1 class="text-center mb-4 mt-4" style="user-select: none;">Search for a Location</h1>
+  <form class="w-50" action="/weather" method="GET">
+    <div class="input-group input-group-lg">
+      <input type="text" class="form-control " placeholder="Enter city name" aria-label="City name" name="location" required>
+      <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+  </form>
 </div>
