@@ -20,10 +20,10 @@ app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
-    res.render('home');
+    res.render('search');
 });
 
-app.get('/weather', async (req, res) => {
+app.get('/search', async (req, res) => {
     const location = req.query.location; // Extract city from form submission
     const apiKey = `${process.env.WEATHER_API_KEY}`; // API key from OpenWeatherMap
   
@@ -35,7 +35,7 @@ app.get('/weather', async (req, res) => {
         res.render('weatherResult', { weatherData, location });
     } catch (error) {
       console.error(error);
-      res.render('home', { error: 'Could not retrieve weather data, please try again.' });
+      res.render('search', { error: 'Could not retrieve weather data, please try again.' });
     }
   });
 
