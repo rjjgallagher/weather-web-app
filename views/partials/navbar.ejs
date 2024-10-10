@@ -9,11 +9,12 @@
           <a class="nav-link"  href="/">Home</a>
         </div>
         <div class="navbar-nav ms-auto">
-          <a class="nav-link" href="#">Login</a>
-          <a class="nav-link" href="#">Sign Up</a>
-          <!-- <form id="logout-form" action="/logout" method="POST" class="d-inline">
-              <button class="nav-link btn btn-link p-0" type="submit" style="text-decoration: none;" >Logout</button>
-          </form> -->
+          <% if(!currentUser) {%>
+          <a class="nav-link" href="/login">Login</a>
+          <a class="nav-link" href="/register">Register</a>
+          <% } else {%>
+          <a class="nav-link" href="/logout">Logout</a>
+          <% } %>
         </div>
       </div>
     </div>
