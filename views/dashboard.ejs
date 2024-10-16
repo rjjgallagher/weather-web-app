@@ -1,0 +1,89 @@
+<% layout('layouts/boilerplate') %>
+  <!-- First row: Dashboard Header + Search -->
+  <div class="row">
+    <div class="input-group flex-nowrap d-flex justify-content-between ">
+      <h2 class="mx-4">Weather Dashboard</h2>
+      <span class="input-group-text" id="addon-wrapping">&#128269;</span>
+      <input
+        type="text"
+        class="form-control"
+        placeholder="Search"
+        aria-label="Search"
+        aria-describedby="addon-wrapping"
+      />
+    </div>
+  </div>
+  <!-- Second row: Two main boxes -->
+  <div class="row">
+    <!-- Left side -->
+    <div class="col-md-8 mt-3">
+      <!-- Main weather box -->
+      <div class="p-4 bg-white rounded">
+        <div class="row">
+          <h4>Forecast in New York, US</h4>
+          <p class="mb-5">Friday, December 16 at 09:33 PM</p>
+        </div>
+        <div class="row">
+          <div class="col-md-4">
+            <div class="bg-light p-3 rounded">
+              <h3>39°F</h3>
+              <p>Overcast Clouds</p>
+              <small>High: 41°F, Low: 36°F</small>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <!-- Additional weather details (visibility, humidity, etc.) -->
+            <div class="bg-light p-3 rounded">
+              <p>Visibility: 10km</p>
+              <p>Humidity: 92%</p>
+              <p>Cloudiness: 100%</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <!-- Sunrise/sunset info -->
+            <div class="bg-light p-3 rounded">
+              <p>Sunrise: 07:13 AM</p>
+              <p>Sunset: 04:29 PM</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Forecast days (Saturday to Friday) -->
+        <div class="row">
+          <div class="d-flex justify-content-between mt-4">
+            <div class="p-2 bg-light rounded text-center">
+              <p>Sat</p>
+              <p>46°F / 34°F</p>
+            </div>
+            <!-- Repeat this structure for each day of the week -->
+            <div class="p-2 bg-light rounded text-center">
+              <p>Sun</p>
+              <p>44°F / 32°F</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right side (user favorites) -->
+    <div class="col-md-4 mt-3">
+      <div class="p-4 bg-white rounded">
+        <h4>Favorites</h4>
+        <ul class="list-unstyled">
+          <li class="d-flex justify-content-between">
+            <span>Los Angeles</span>
+            <span>56°F</span>
+            <span>Clear Sky</span>
+            <button>Add/Delete</button>
+          </li>
+          <!-- Repeat for other cities -->
+          <li class="d-flex justify-content-between">
+            <span>Seattle</span>
+            <span>36°F</span>
+            <span>Clear Sky</span>
+            <button>Add/Delete</button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
