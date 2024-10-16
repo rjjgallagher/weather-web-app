@@ -1,7 +1,16 @@
 <% layout('layouts/boilerplate')%>
 <div class="container d-flex mt-5 justify-content-center align-items-center">
     <div class="card w-25 mb-3 mt-3">
-      <div class="card-header">Weather for <%= location %></div>
+      <div class="card-header">Weather for <%= location %>
+      <% if (currentUser) { %>
+        <form id="favoriteForm" action="/favorites/<%= currentUser.favorites.includes(location) ? 'remove' : 'add' %>" method="POST">
+          <input type="hidden" name="location" value="<%= location %>">
+          <button id="favoriteBtn" class="btn <%= currentUser.favorites.includes(location) ? 'btn-warning' : 'btn-secondary' %>" type="submit">
+            <%= currentUser.favorites.includes(location) ? 'Remove from Favorites' : 'Add to Favorites' %>
+          </button>
+        </form>
+      <% } %>
+      </div>
       <div class="card-body">
         <h5 class="card-title">Location: <%= weatherData.name %></h5>
         <h5 class="card-title">Temperature: <%= Math.round(weatherData.main.temp) %>°F</h5>
@@ -10,3 +19,4 @@
       </div>
     </div>
 </div>
+<script src="/javascripts/toggleFavoriteButton.js"></script>

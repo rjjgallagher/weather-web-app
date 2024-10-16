@@ -1,39 +1,40 @@
 if (process.env.NODE_ENV !== "production") {
-  require('dotenv').config(); // Load environment variables
+  require("dotenv").config(); // Load environment variables
 }
 
-const express = require('express');
-const path = require('path');
-const methodOverride = require('method-override');
-const axios = require('axios');
-const engine = require('ejs-mate');
-const mongoose = require('mongoose');
-const session = require('express-session');
-const passport = require('passport');
-const LocalStrategy = require('passport-local');
-const User = require('./models/user');
-const ExpressError = require('./utils/ExpressError');
+const express = require("express");
+const path = require("path");
+const methodOverride = require("method-override");
+const axios = require("axios");
+const engine = require("ejs-mate");
+const mongoose = require("mongoose");
+const session = require("express-session");
+const passport = require("passport");
+const LocalStrategy = require("passport-local");
+const User = require("./models/user");
+const ExpressError = require("./utils/ExpressError");
 
-
-const db_Url = process.env.DB_URL || 'mongodb://127.0.0.1:27017/weather-app';
+const db_Url = process.env.DB_URL || "mongodb://127.0.0.1:27017/weather-app";
 mongoose.connect(db_Url);
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));
 db.once("open", () => {
-    console.log("Database connected");
+  console.log("Database connected");
 });
 
 const app = express(); // Create an Express application
 
-app.engine('ejs', engine); // Set the view engine to use the ejs-mate package
-app.set('view engine', 'ejs'); // Set the view engine to EJS
-app.set('views', path.join(__dirname, 'views')); // Set the views directory
+app.engine("ejs", engine); // Set the view engine to use the ejs-mate package
+app.set("view engine", "ejs"); // Set the view engine to EJS
+app.set("views", path.join(__dirname, "views")); // Set the views directory
 
+// Middleware to parse JSON data in the request body
+app.use(express.json());
 // Middleware to parse URL-encoded data with the querystring library (extended: true uses the qs library)
 app.use(express.urlencoded({ extended: true }));
-app.use(methodOverride('_method')); // Middleware to override HTTP methods
+app.use(methodOverride("_method")); // Middleware to override HTTP methods
 // Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
 // Configure session support
 const sessionConfig = {
@@ -41,11 +42,11 @@ const sessionConfig = {
   resave: false,
   saveUninitialized: true,
   cookie: {
-      httpOnly: true,
-      expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
-      maxAge: 1000 * 60 * 60 * 24 * 7
-  }
-}
+    httpOnly: true,
+    expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  },
+};
 app.use(session(sessionConfig)); // Enable session support
 
 app.use(passport.initialize()); // Initialize Passport
@@ -61,26 +62,25 @@ const isLoggedIn = (req, res, next) => {
   if (!req.isAuthenticated()) {
     req.session.returnTo = req.originalUrl;
     // TODO: Flash an error message
-    return res.redirect('/login');
+    return res.redirect("/login");
   }
   next();
 };
 
 const setCurrentUser = (req, res, next) => {
   res.locals.currentUser = req.user;
-  console.log("set the current user");
   next();
 };
 
-app.use(setCurrentUser)
+app.use(setCurrentUser);
 
 // Route to render the search page
-app.get('/', (req, res) => {
-    res.render('search');
+app.get("/", (req, res) => {
+  res.render("search");
 });
 
 // Route to search for weather data
-app.get('/search', async (req, res) => {
+app.get("/search", async (req, res) => {
   const location = req.query.location; // Extract city from form submission
   const apiKey = `${process.env.WEATHER_API_KEY}`; // API key from OpenWeatherMap
 
@@ -89,63 +89,133 @@ app.get('/search', async (req, res) => {
   try {
     const weatherResponse = await axios.get(weatherUrl);
     const weatherData = weatherResponse.data;
-      res.render('weatherResult', { weatherData, location });
+    res.render("weatherResult", { weatherData, location });
   } catch (error) {
     console.error(error);
-    res.render('search', { error: 'Could not retrieve weather data, please try again.' });
+    res.render("search", {
+      error: "Could not retrieve weather data, please try again.",
+    });
+  }
+});
+
+app.post("/favorites/add", async (req, res, next) => {
+  const userId = req.user._id;
+  const { location } = req.body;
+  if (!location) {
+    return next(new ExpressError("Location is required", 400));
+  }
+  try {
+    const user = await User.findById(userId);
+    if (!user.favorites.includes(location)) {
+      user.favorites.push(location);
+      await user.save();
+      res.status(200).send("Location added to favorites successfully");
+    } else {
+      return next(
+        new ExpressError("Location already exists in favorites", 400),
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    return next(
+      new ExpressError(
+        "A server error occurred while adding the location to favorites.",
+        500,
+      ),
+    );
+  }
+});
+
+app.post("/favorites/remove", async (req, res, next) => {
+  const userId = req.user._id;
+  const location = req.body.location;
+
+  try {
+    const user = await User.findById(userId);
+    // Check if the location exists in the array before removal
+    if (!user.favorites.includes(location)) {
+      console.log("Location not found in favorites:", location);
+      return next(new ExpressError("Location not found in favorites", 400));
+    }
+    // Remove the location from the favorites array
+    await User.updateOne({ _id: userId }, { $pull: { favorites: location } });
+    res.status(200).send("Location removed from favorites successfully");
+  } catch (err) {
+    console.error(err);
+    return next(
+      new ExpressError(
+        "A server error occurred while removing the location from favorites.",
+        500,
+      ),
+    );
   }
 });
 
 // Route to register a new user
-app.get('/register', (req, res) => {
-    res.render('user/register');
+app.get("/register", (req, res) => {
+  res.render("user/register");
 });
 
 // Route to create a new user
-app.post('/register', async (req, res) => {
-    try {
-        const { email, username, password } = req.body;
-        const user = new User({ email, username });
-        const registeredUser = await User.register(user, password);
-        req.login(registeredUser, err => {
-            if (err) return next(err);
-            // TODO: Flash a success message
-            res.redirect('/');
-        });
-    } catch (error) {
-      // TODO: Flash an error message
-        res.render('register', { error: error.message });
-    }
-});
-
-app.get('/login', (req, res) => {
-    res.render('user/login');
-});
-
-app.post('/login', passport.authenticate('local', { failureFlash: true, failureRedirect: '/login' }), (req, res) => {
-  // TODO: Flash a success message
-  const redirectUrl = res.locals.returnTo || '/'; // If returnTo is not set, redirect to base url
-  delete res.locals.returnTo; // Delete the returnTo property from res.locals
-  res.redirect(redirectUrl);
-});
-
-app.get('/logout', async (req, res) => {
-    req.logout(function(err) {
-      if (err) { return next(err); }
-      res.redirect('/');
+app.post("/register", async (req, res) => {
+  try {
+    const { email, username, password } = req.body;
+    const user = new User({ email, username });
+    const registeredUser = await User.register(user, password);
+    req.login(registeredUser, (err) => {
+      if (err) return next(err);
+      // TODO: Flash a success message
+      res.redirect("/");
     });
+  } catch (error) {
+    // TODO: Flash an error message
+    res.render("register", { error: error.message });
+  }
+});
+
+app.get("/login", (req, res) => {
+  res.render("user/login");
+});
+
+app.post(
+  "/login",
+  passport.authenticate("local", {
+    failureFlash: true,
+    failureRedirect: "/login",
+  }),
+  (req, res) => {
+    // TODO: Flash a success message
+    const redirectUrl = res.locals.returnTo || "/"; // If returnTo is not set, redirect to base url
+    delete res.locals.returnTo; // Delete the returnTo property from res.locals
+    res.redirect(redirectUrl);
+  },
+);
+
+app.get("/logout", async (req, res) => {
+  req.logout(function (err) {
+    if (err) {
+      return next(err);
+    }
+    res.redirect("/");
+  });
 });
 
 // Error handling middleware
-app.all('*', (req, res, next) => {
-  next(new ExpressError('Page Not Found', 404));
+app.all("*", (req, res, next) => {
+  next(new ExpressError("Page Not Found", 404));
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  const { statusCode = 500} = err;
-  if(!err.message) err.message = 'Something went wrong.';
-  res.status(statusCode).render('error', { err });
+  const { statusCode = 500 } = err;
+  if (!err.message) err.message = "Something went wrong.";
+  if (req.xhr || req.headers.accept.indexOf("json") > -1) {
+    // If the request is from AJAX, send a JSON response
+    return res.status(statusCode).json({ message: err.message });
+  } else {
+    // For non-AJAX requests, render the error page
+    res.status(statusCode).render("error", { err });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
