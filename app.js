@@ -73,6 +73,14 @@ const setCurrentUser = (req, res, next) => {
   next();
 };
 
+// Middleware to store the returnTo path from the session
+const storeReturnTo = (req, res, next) => {
+  if (req.session.returnTo) {
+    res.locals.returnTo = req.session.returnTo;
+  }
+  next();
+}
+
 app.use(setCurrentUser);
 
 // Route to render the search page
@@ -197,6 +205,7 @@ app.get("/login", (req, res) => {
 // Route to log in the user
 app.post(
   "/login",
+  storeReturnTo,
   passport.authenticate("local", {
     failureFlash: true,
     failureRedirect: "/login",
