@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const formData = new FormData(favoriteForm); // Get the form data using FormData API (https://developer.mozilla.org/en-US/docs/Web/API/FormData)
       const location = formData.get("location");
       const action = favoriteForm.getAttribute("action"); // Determine if it's an add or remove action
+      console.log("Button Submission, action:", action);
 
       fetch(action, {
         method: "POST",

@@ -58,7 +58,6 @@ passport.deserializeUser(User.deserializeUser()); // Deserialize the user
 
 // Middleware to check if the user is authenticated
 const isLoggedIn = (req, res, next) => {
-  console.log(req.session);
   // If the user is not authenticated, redirect to the login page
   if (!req.isAuthenticated()) {
     req.session.returnTo = req.originalUrl; // Store the original URL in the session
@@ -82,7 +81,7 @@ app.get("/", (req, res) => {
 });
 
 // Route to render the dashboard page
-app.get('/dashboard', (req, res) => {
+app.get('/dashboard', isLoggedIn, (req, res) => {
   res.render('dashboard');
 });
 
