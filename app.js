@@ -88,10 +88,30 @@ app.get("/", (req, res) => {
   res.render("search");
 });
 
-// Route to render the dashboard page
-app.get('/dashboard', isLoggedIn, (req, res) => {
-  res.render('dashboard');
+// Route to render the dashboard page with weather data for favorite locations
+app.get('/dashboard', isLoggedIn, async (req, res, next) => {
+  const apiKey = process.env.WEATHER_API_KEY;
+  const user = req.user;
+
+  try {
+    // If the user has favorite locations, fetch weather data for each
+    const weatherDataPromises = user.favorites.map(async (location) => {
+      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}&units=imperial`;
+      const response = await axios.get(weatherUrl);
+      return {
+        location,
+        data: response.data,
+      };
+    });
+    const favoritesWeatherData = await Promise.all(weatherDataPromises); // Wait for all the weather data to be fetched
+    res.locals.favoritesWeatherData = favoritesWeatherData; // Store the weather data in res.locals for access in the template
+    res.render('dashboard'); // Render the dashboard page with the weather data
+  } catch (error) {
+    console.error('Error fetching weather data for dashboard:', error);
+    next(new ExpressError('Failed to load weather data for your dashboard.', 500));
+  }
 });
+
 
 // Route to search for weather data
 app.get("/search", async (req, res) => {
