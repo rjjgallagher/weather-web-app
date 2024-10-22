@@ -14,9 +14,9 @@ const LocalStrategy = require("passport-local");
 const User = require("./models/user");
 const ExpressError = require("./utils/ExpressError");
 
-const db_Url = process.env.DB_URL || "mongodb://127.0.0.1:27017/weather-app"; // Database URL
+const db_Url = process.env.DB_URL || "mongodb://127.0.0.1:27017/weather-app"; 
 mongoose.connect(db_Url); // Connect to the database
-const db = mongoose.connection;
+const db = mongoose.connection; 
 db.on("error", console.error.bind(console, "connection error:")); // Log an error if the connection fails
 // Log a message to the console when the database connection is open
 db.once("open", () => {
@@ -68,7 +68,7 @@ const isLoggedIn = (req, res, next) => {
   next(); 
 };
 
-// Middleware to set the currentUser variable in the response locals
+// Middleware to set the currentUser variable in the response locals object
 const setCurrentUser = (req, res, next) => {
   res.locals.currentUser = req.user; // Set the currentUser variable in the response locals
   next();
@@ -94,7 +94,7 @@ app.get("/search", async (req, res) => {
   const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}&units=imperial`;
 
   try {
-    const weatherResponse = await axios.get(weatherUrl); // Make a GET request to the weather API
+    const weatherResponse = await axios.get(weatherUrl); // Make a GET request to the weather API with the weatherUrl 
     const weatherData = weatherResponse.data; 
     res.render("weatherResult", { weatherData, location }); // Render the weatherResult template with the weather data
   } catch (error) {
