@@ -5,18 +5,22 @@ if (process.env.NODE_ENV !== "production") {
 const express = require("express");
 const path = require("path");
 const methodOverride = require("method-override");
-const axios = require("axios");
 const engine = require("ejs-mate");
 const mongoose = require("mongoose");
 const session = require("express-session");
 const passport = require("passport");
 const LocalStrategy = require("passport-local");
 const User = require("./models/user");
+const Weather = require("./models/weather");
 const ExpressError = require("./utils/ExpressError");
+const {
+  checkAndUpdateStaleWeatherData,
+  getWeatherData,
+} = require("./utils/weatherHelpers.js");
 
-const db_Url = process.env.DB_URL || "mongodb://127.0.0.1:27017/weather-app"; 
+const db_Url = process.env.DB_URL || "mongodb://127.0.0.1:27017/weather-app";
 mongoose.connect(db_Url); // Connect to the database
-const db = mongoose.connection; 
+const db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:")); // Log an error if the connection fails
 // Log a message to the console when the database connection is open
 db.once("open", () => {
@@ -28,7 +32,6 @@ const app = express(); // Create an Express application
 app.engine("ejs", engine); // Set the view engine to use the ejs-mate package
 app.set("view engine", "ejs"); // Set the view engine to EJS
 app.set("views", path.join(__dirname, "views")); // Set the views directory
-
 
 app.use(express.json()); // Middleware to parse JSON data in the request body
 app.use(express.urlencoded({ extended: true })); // Middleware to parse URL-encoded data with the querystring library (extended: true uses the qs library)
@@ -62,9 +65,9 @@ const isLoggedIn = (req, res, next) => {
   if (!req.isAuthenticated()) {
     req.session.returnTo = req.originalUrl; // Store the original URL in the session
     // TODO: Flash an error message
-    return res.redirect("/login"); 
+    return res.redirect("/login");
   }
-  next(); 
+  next();
 };
 
 // Middleware to set the currentUser variable in the response locals object
@@ -79,7 +82,7 @@ const storeReturnTo = (req, res, next) => {
     res.locals.returnTo = req.session.returnTo;
   }
   next();
-}
+};
 
 app.use(setCurrentUser);
 
@@ -88,48 +91,92 @@ app.get("/", (req, res) => {
   res.render("search");
 });
 
-// Route to render the dashboard page with weather data for favorite locations
-app.get('/dashboard', isLoggedIn, async (req, res, next) => {
-  const apiKey = process.env.WEATHER_API_KEY;
-  const user = req.user;
+// Route to retrieve weather data from the database
+app.get("/api/weather", async (req, res, next) => {
+  const { location } = req.query;
+
+  if (!location) {
+    return next(new ExpressError("Location is required", 400));
+  }
 
   try {
-    // If the user has favorite locations, fetch weather data for each
-    const weatherDataPromises = user.favorites.map(async (location) => {
-      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}&units=imperial`;
-      const response = await axios.get(weatherUrl);
-      return {
-        location,
-        data: response.data,
-      };
-    });
-    const favoritesWeatherData = await Promise.all(weatherDataPromises); // Wait for all the weather data to be fetched
-    res.locals.favoritesWeatherData = favoritesWeatherData; // Store the weather data in res.locals for access in the template
-    res.render('dashboard'); // Render the dashboard page with the weather data
+    // Query the database for the weather data of the specified location
+    const weatherData = await getWeatherData(location);
+
+    if (!weatherData) {
+      return next(
+        new ExpressError("Weather data not found in the database.", 404)
+      );
+    }
+
+    // Send the found weather data as a JSON response
+    res.status(200).json(weatherData);
   } catch (error) {
-    console.error('Error fetching weather data for dashboard:', error);
-    next(new ExpressError('Failed to load weather data for your dashboard.', 500));
+    console.error("Error retrieving weather data:", error);
+    next(new ExpressError("Failed to retrieve weather data.", 500));
   }
 });
 
+// Route to render the dashboard page with weather data for favorite locations
+app.get("/dashboard", isLoggedIn, async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).populate("favorites");
+
+    const lastSearchedLocation = req.session.lastSearchedLocation;
+    const defaultLocation = user.favorites[0].location ? user.favorites[0].location : "Minneapolis";
+    const weatherData = lastSearchedLocation
+      ? await getWeatherData(lastSearchedLocation)
+      : await getWeatherData(defaultLocation);
+
+    if (!weatherData || weatherData.length === 0) {
+      // Render the dashboard with an appropriate message instead of throwing an error
+      return res.render("dashboard", {
+        weatherData: null,
+        message:
+          "No weather data available for your favorite locations. Please try again later or add new favorites.",
+      });
+    }
+    res.render("dashboard", { weatherData, favorites: user.favorites }); // Render the dashboard page with the weather data
+  } catch (error) {
+    console.error(
+      "\nError Code: 500\nError fetching weather data for dashboard:\n",
+      error
+    );
+    next(
+      new ExpressError(
+        "\nError Code: 500\nFailed to load weather data for your dashboard.\n",
+        500
+      )
+    );
+  }
+});
 
 // Route to search for weather data
-app.get("/search", async (req, res) => {
+app.get("/search", async (req, res, next) => {
   const location = req.query.location; // Extract city from form submission
-  const apiKey = `${process.env.WEATHER_API_KEY}`; // API key from OpenWeatherMap
-
-  const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}&units=imperial`;
-
   try {
-    const weatherResponse = await axios.get(weatherUrl); // Make a GET request to the weather API with the weatherUrl 
-    const weatherData = weatherResponse.data; 
-    res.render("weatherResult", { weatherData, location }); // Render the weatherResult template with the weather data
+    // Use getWeatherData to either retrieve cached data or fetch new data
+    const weatherData = await getWeatherData(location);
+    if (!weatherData) {
+      return next(
+        new ExpressError(
+          "Could not retrieve weather data, please try again.",
+          400
+        )
+      );
+    }
+    req.session.lastSearchedLocation = location; // Store the last searched location in the session
+    // Render the weatherResult template with the weather data and location
+    res.render("weatherResult", { weatherData, location });
   } catch (error) {
-    console.error(error);
-
-    res.render("search", {
-      error: "Could not retrieve weather data, please try again.",
-    });
+    console.error("Error in /search route:\n", error);
+    next(
+      new ExpressError(
+        "Failed to retrieve weather data, please try again.",
+        500
+      )
+    );
   }
 });
 
@@ -143,25 +190,45 @@ app.post("/favorites/add", async (req, res, next) => {
   }
 
   try {
-    const user = await User.findById(userId);
-    if (!user.favorites.includes(location)) {
-      user.favorites.push(location);
+    const user = await User.findById(userId).populate("favorites");
 
-      await user.save();
+    // Find the weather data for the location
+    let weather = await Weather.findOne({ location });
 
-      res.status(200).send("Location added to favorites successfully");
-    } else {
-      return next(
-        new ExpressError("Location already exists in favorites", 400),
+    if (!weather) {
+      console.log(
+        "No weather data found in the database. Fetching from API..."
       );
+      await checkAndUpdateStaleWeatherData([location]);
+      weather = await Weather.findOne({ location });
+      console.log("Weather data fetched from API:", weather);
+      if (!weather)
+        return next(
+          new ExpressError("Location not found in the database or API.", 400)
+        );
+    }
+
+    // Check if the weather data's ObjectId is already in the user's favorites
+    const alreadyInFavorites = user.favorites.some((fav) =>
+      fav._id.equals(weather._id)
+    );
+
+    if (!alreadyInFavorites) {
+      user.favorites.push(weather._id); // Add the ObjectId of the weather data to the user's favorites
+      await user.save(); // Save the user's favorites
+      return res
+        .status(200)
+        .json({ message: "Location added to favorites successfully." }); // Send a success response
+    } else {
+      return next(new ExpressError("Location already in favorites.", 400)); // Send a bad request response
     }
   } catch (error) {
-    console.log(error);
-    return next(
+    console.error("Error within /favorites/add route\n", error);
+    next(
       new ExpressError(
         "A server error occurred while adding the location to favorites.",
-        500,
-      ),
+        500
+      )
     );
   }
 });
@@ -169,28 +236,45 @@ app.post("/favorites/add", async (req, res, next) => {
 // Route to remove a location from the user's favorites
 app.post("/favorites/remove", async (req, res, next) => {
   const userId = req.user._id;
-  const location = req.body.location;
+  const { location } = req.body;
+
+  if (!location) {
+    return next(new ExpressError("Location is required", 400));
+  }
 
   try {
     const user = await User.findById(userId);
 
-    // Check if the location exists in the array before removal
-    if (!user.favorites.includes(location)) {
-      console.log("Location not found in favorites:", location);
+    // Find the weather data for the location
+    const weather = await Weather.findOne({ location });
+
+    if (!weather) {
+      return next(new ExpressError("Location not found", 400));
+    }
+
+    // Check if the weather data's ObjectId is in the user's favorites
+    const weatherIndex = user.favorites.findIndex((fav) =>
+      fav.equals(weather._id)
+    );
+
+    if (weatherIndex === -1) {
       return next(new ExpressError("Location not found in favorites", 400));
     }
 
-    // Remove the location from the favorites array and save the user document to the database
-    await User.updateOne({ _id: userId }, { $pull: { favorites: location } });
+    // Remove the ObjectId of the weather data from the user's favorites
+    user.favorites.splice(weatherIndex, 1);
+    await user.save();
 
-    res.status(200).send("Location removed from favorites successfully");
-  } catch (err) {
-    console.error(err);
     return next(
+      new ExpressError("Location removed from favorites successfully")
+    );
+  } catch (err) {
+    console.error("Error removing favorite location:", err);
+    next(
       new ExpressError(
         "A server error occurred while removing the location from favorites.",
-        500,
-      ),
+        500
+      )
     );
   }
 });
@@ -235,7 +319,7 @@ app.post(
     const redirectUrl = res.locals.returnTo || "/"; // If returnTo is not set, redirect to base url
     delete res.locals.returnTo; // Delete the returnTo property from res.locals
     res.redirect(redirectUrl);
-  },
+  }
 );
 
 // Route to log out the user
@@ -244,6 +328,7 @@ app.get("/logout", async (req, res) => {
     if (err) {
       return next(err);
     }
+    delete req.session.lastSearchedLocation;
     res.redirect("/");
   });
 });

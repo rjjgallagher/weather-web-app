@@ -8,10 +8,12 @@ const UserSchema = new Schema({
     required: true,
     unique: true,
   },
-  favorites: {
-    type: [String],
-    default: [],
-  },
+  favorites: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'Weather',
+    },
+  ],
 });
 /*
  The passport-local-mongoose plugin simplifies the integration of Passport.js
